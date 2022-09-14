@@ -34,11 +34,12 @@ checkStack() {
   local stack=$1
   echo "" && echo "" && echo "Stack is ${stack}"
   info=$(aws cloudformation describe-stacks --region ${region} --stack-name ${stack} | \
-    jq '.[][] | {"name":.StackName, "created":.CreationTime, "updated":.LastUpdatedTime?, "exports":[.Outputs[].ExportName?]}')
+    jq '.[][] | {"name":.StackName, "description":.Description, "created":.CreationTime, "updated":.LastUpdatedTime?, "exports":[.Outputs[].ExportName?]}')
 
   local updated=$(echo ${info} | jq '.updated')
   local created=$(echo ${info} | jq '.created')
   local exports=($(echo ${info} | jq -r '.exports[]?'))
+  local description=$(echo ${info} | jq '.description')
 
   if [[ ${updated} == null ]]; then
     local timestamp=${created#\"}; timestamp=${timestamp%\"}
@@ -52,6 +53,7 @@ checkStack() {
   local elapsed=$(date -d "${current}sec - ${timeSince}sec" +%s)
   local age=$(stackAge ${elapsed})
   echo -e "\t" "Time elapsed: ${elapsed} seconds (${age})"
+  echo -e "\t" "Description: ${description}"
 
   if [[ ${elapsed} -le ${two} ]]; then
     echo -e "\t" "Stack ${stack} was created/last updated under two weeks ago, leaving it alone"
