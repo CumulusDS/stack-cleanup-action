@@ -45,20 +45,21 @@ checkStack() {
   local created=$(echo ${info} | jq '.created')
   local exports=($(echo ${info} | jq -r '.exports[]?'))
 
-
   echo -e "\t" Branch: ${branch}
   if [[ ${updated} == null ]]; then
     local timestamp=${created#\"}; timestamp=${timestamp%\"}
-    echo -e "\t" "Updated is null, going with stack created time"
+    echo -e "\t" "Stack has never been updating, using stack created time for comparison"
+    local lastTouched="creation"
   else
     local timestamp=${updated#\"}; timestamp=${timestamp%\"}
-    echo -e "\t" "Updated is not null, using stack last updated time"
+    echo -e "\t" "Stack has been updated since creation, using last updated time for comparison"
+    local lastTouched="last updated"
   fi
 
   local timeSince=$(date -d "$timestamp" +%s)
   local elapsed=$(date -d "${current}sec - ${timeSince}sec" +%s)
   local age=$(stackAge ${elapsed})
-  echo -e "\t" "Time elapsed: ${elapsed} seconds (${age})"
+  echo -e "\t" "Time since ${lastTouched}: ${elapsed} seconds (${age})"
 
   if [[ ${elapsed} -le ${two} ]]; then
     echo -e "\t" "Stack ${stack} was created/last updated under two weeks ago, leaving it alone"
