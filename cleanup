@@ -33,14 +33,20 @@ stackAge() {
 checkStack() {
   local stack=$1
   echo "" && echo "" && echo "Stack is ${stack}"
-  info=$(aws cloudformation describe-stacks --region ${region} --stack-name ${stack} | \
-    jq '.[][] | {"name":.StackName, "description":.Description, "created":.CreationTime, "updated":.LastUpdatedTime?, "exports":[.Outputs[].ExportName?]}')
+  aws cloudformation describe-stacks --region ${region} --stack-name ${stack} > info.txt
+  info=$(cat info | \
+    jq '.[][] | {"name":.StackName, "created":.CreationTime, "updated":.LastUpdatedTime?, "exports":[.Outputs[].ExportName?], "tags":.Tags | from_entries}')
+  local description=$(cat info | jq '.[][].Description')
+  local description=$(echo $description | tr '\n' ' ')
 
+  local stage=$(echo ${info} | jq '.tags.STAGE')
+  local branch=$(echo $description | sed -e 's/.*Branch: \(.*\) | Git.*/\1/')
   local updated=$(echo ${info} | jq '.updated')
   local created=$(echo ${info} | jq '.created')
   local exports=($(echo ${info} | jq -r '.exports[]?'))
-  local description=$(echo ${info} | jq '.description')
 
+
+  echo -e "\t" Branch: ${branch}
   if [[ ${updated} == null ]]; then
     local timestamp=${created#\"}; timestamp=${timestamp%\"}
     echo -e "\t" "Updated is null, going with stack created time"
@@ -53,7 +59,6 @@ checkStack() {
   local elapsed=$(date -d "${current}sec - ${timeSince}sec" +%s)
   local age=$(stackAge ${elapsed})
   echo -e "\t" "Time elapsed: ${elapsed} seconds (${age})"
-  echo -e "\t" "Description: ${description}"
 
   if [[ ${elapsed} -le ${two} ]]; then
     echo -e "\t" "Stack ${stack} was created/last updated under two weeks ago, leaving it alone"
