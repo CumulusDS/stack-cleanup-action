@@ -1,0 +1,30 @@
+name: 'stack-cleanup-action'
+description: 'action to cleanup old/unupated feature stacks after 2 weeks'
+inputs:
+  service:
+    description: "Manually define the service being run against"
+    required: false
+    default: ""
+  file:
+    description: "File to get yaml properties from"
+    required: false
+    default: "serverless.yml"
+  region:
+    description: "Region"
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: Get Serverless properties
+      id: serverless
+      if: inputs.service == ''
+      uses: CumulusDS/get-yaml-paths-action@v0.1.1
+      with:
+        file: ${{ inputs.file }}
+        service: service
+    - name: Cleanup
+      run: ${{ github.action_path }}/cleanup
+      env:
+        service: ${{ steps.serverless.outputs.service }}
+        region: ${{ inputs.region }}
+      shell: bash

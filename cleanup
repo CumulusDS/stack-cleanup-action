@@ -1,0 +1,80 @@
+#!/bin/zsh
+
+echo "Service is ${service}"
+echo "Region is ${region}"
+echo ""
+
+current=$(date)
+oneWeek=604800
+twoWeek=1209600
+
+getFiltered() {
+  stacks=$1
+  filtered=($(echo ${stacks} | jq -r --arg SERVICE "$service" '.[] | select(contains($SERVICE))' | \
+    grep -v "${service}"Principals | grep -v "${service}"-master | grep -v "${service}"-dev ))
+  echo "Stacks being checked:"
+  printf '%s\n' "${filtered[@]}"
+  echo ""
+}
+deleteStack() {
+  local stack=$1
+  echo "\tRemoving stack ${stack}"
+  #aws cloudformation delete-stack --region ${region} --stack-name ${stack} \
+  #  --output table --color auto
+}
+
+stackAge() {
+  age=$1
+  date -d "@${age}" "+$((${age}/86400)) days, %H hours & %M minutes"
+}
+
+checkStack() {
+  local stack=$1
+  echo "" && echo "" && echo "Stack is ${stack}"
+  info=$(aws cloudformation describe-stacks --region ${region} --stack-name ${stack} | \
+    jq '.[][] | {"name":.StackName, "created":.CreationTime, "updated":.LastUpdatedTime?, "exports":[.Outputs[].ExportName?]}')
+
+  local updated=$(echo ${info} | jq '.updated')
+  local created=$(echo ${info} | jq '.created')
+  local exports=($(echo ${info} | jq -r '.exports[]?'))
+
+  if [[ ${updated} == null ]]; then
+    local timestamp=${created#\"}; timestamp=${timestamp%\"}
+    echo "\tUpdated is null, going with stack created time"
+  else
+    local timestamp=${updated#\"}; timestamp=${timestamp%\"}
+    echo "\tUpdated is not null, using stack last updated time"
+  fi
+
+  local timeSince=$(date -d "$timestamp" +%s)
+  local elapsed=$(date -d "${current}sec - ${timeSince}sec" +%s)
+  local age=$(stackAge ${elapsed})
+  echo "\tTime elapsed: ${elapsed} seconds (${age})"
+
+  if [[ ${elapsed} -le ${two} ]]; then
+    echo "\tStack ${stack} was created/last updated under two weeks ago, leaving it alone"
+  elif [[ ${elapsed} -gt ${twoWeek} ]]; then
+    echo "\tStack ${stack} was created/last updated over two weeks ago"
+    deleteStack "${stack}"
+  fi
+}
+
+main() {
+  local stacks=$(aws cloudformation list-stacks --region ${region} --query "StackSummaries[*].StackName" \
+    --stack-status-filter CREATE_IN_PROGRESS CREATE_COMPLETE \
+    ROLLBACK_IN_PROGRESS ROLLBACK_FAILED ROLLBACK_COMPLETE \
+    DELETE_FAILED \
+    UPDATE_IN_PROGRESS \
+    UPDATE_COMPLETE_CLEANUP_IN_PROGRESS \
+    UPDATE_ROLLBACK_IN_PROGRESS UPDATE_ROLLBACK_FAILED UPDATE_ROLLBACK_COMPLETE_CLEANUP_IN_PROGRESS \
+    UPDATE_ROLLBACK_COMPLETE \
+    UPDATE_COMPLETE | jq '.')
+
+  getFiltered "${stacks}"
+
+  for stack in ${filtered[@]}; do
+    checkStack "${stack}"
+  done
+}
+
+main
