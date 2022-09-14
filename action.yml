@@ -39,17 +39,11 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Get Serverless properties
-      id: serverless
-      if: inputs.service == ''
-      uses: CumulusDS/get-yaml-paths-action@v0.1.1
-      with:
-        file: ${{ inputs.file }}
-        service: service
     - name: Assume Role
       id: role
       uses: CumulusDS/assume-role-action@v1
       with:
+        file: ${{ inputs.file }}
         role: ${{ inputs.role }}
         hyphen: ${{ inputs.hyphen }}
         region: ${{ inputs.region }}
