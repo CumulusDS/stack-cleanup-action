@@ -1,4 +1,4 @@
-#!/bin/zsh
+#!/bin/bash
 
 echo "Service is ${service}"
 echo "Region is ${region}"
