@@ -33,7 +33,7 @@ stackAge() {
 checkStack() {
   local stack=$1
   echo "" && echo "" && echo "Stack is ${stack}"
-  aws cloudformation describe-stacks --region ${region} --stack-name ${stack} > info.txt
+  aws cloudformation describe-stacks --region ${region} --stack-name ${stack} > info
   info=$(cat info | \
     jq '.[][] | {"name":.StackName, "created":.CreationTime, "updated":.LastUpdatedTime?, "exports":[.Outputs[].ExportName?], "tags":.Tags | from_entries}')
   local description=$(cat info | jq '.[][].Description')
