@@ -55,6 +55,6 @@ runs:
     - name: Cleanup
       run: ${{ github.action_path }}/cleanup
       env:
-        service: ${{ steps.serverless.outputs.service }}
+        service: ${{ steps.role.outputs.service }}
         region: ${{ inputs.region }}
       shell: bash
