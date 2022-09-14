@@ -1,5 +1,6 @@
-#!/bin/zsh
+#!/bin/bash
 
+echo ""
 echo "Service is ${service}"
 echo "Region is ${region}"
 echo ""
@@ -12,13 +13,14 @@ getFiltered() {
   stacks=$1
   filtered=($(echo ${stacks} | jq -r --arg SERVICE "$service" '.[] | select(contains($SERVICE))' | \
     grep -v "${service}"Principals | grep -v "${service}"-master | grep -v "${service}"-dev ))
-  echo "Stacks being checked:"
+  echo "**** Stacks being checked:"
   printf '%s\n' "${filtered[@]}"
+  echo "******************************"
   echo ""
 }
 deleteStack() {
   local stack=$1
-  echo "\tRemoving stack ${stack}"
+  echo -e "\t" "Removing stack ${stack}"
   #aws cloudformation delete-stack --region ${region} --stack-name ${stack} \
   #  --output table --color auto
 }
@@ -31,30 +33,38 @@ stackAge() {
 checkStack() {
   local stack=$1
   echo "" && echo "" && echo "Stack is ${stack}"
-  info=$(aws cloudformation describe-stacks --region ${region} --stack-name ${stack} | \
-    jq '.[][] | {"name":.StackName, "created":.CreationTime, "updated":.LastUpdatedTime?, "exports":[.Outputs[].ExportName?]}')
+  aws cloudformation describe-stacks --region ${region} --stack-name ${stack} > info
+  info=$(cat info | \
+    jq '.[][] | {"name":.StackName, "created":.CreationTime, "updated":.LastUpdatedTime?, "exports":[.Outputs[].ExportName?], "tags":.Tags | from_entries}')
+  local description=$(cat info | jq '.[][].Description')
+  local description=$(echo $description | tr '\n' ' ')
 
+  local stage=$(echo ${info} | jq '.tags.STAGE')
+  local branch=$(echo $description | sed -e 's/.*Branch: \(.*\) | Git.*/\1/')
   local updated=$(echo ${info} | jq '.updated')
   local created=$(echo ${info} | jq '.created')
   local exports=($(echo ${info} | jq -r '.exports[]?'))
 
+  echo -e "\t" Branch: ${branch}
   if [[ ${updated} == null ]]; then
     local timestamp=${created#\"}; timestamp=${timestamp%\"}
-    echo "\tUpdated is null, going with stack created time"
+    echo -e "\t" "Stack has never been updating, using stack created time for comparison"
+    local lastTouched="creation"
   else
     local timestamp=${updated#\"}; timestamp=${timestamp%\"}
-    echo "\tUpdated is not null, using stack last updated time"
+    echo -e "\t" "Stack has been updated since creation, using last updated time for comparison"
+    local lastTouched="last updated"
   fi
 
   local timeSince=$(date -d "$timestamp" +%s)
   local elapsed=$(date -d "${current}sec - ${timeSince}sec" +%s)
   local age=$(stackAge ${elapsed})
-  echo "\tTime elapsed: ${elapsed} seconds (${age})"
+  echo -e "\t" "Time since ${lastTouched}: ${elapsed} seconds (${age})"
 
   if [[ ${elapsed} -le ${two} ]]; then
-    echo "\tStack ${stack} was created/last updated under two weeks ago, leaving it alone"
+    echo -e "\t" "Stack ${stack} was created/last updated under two weeks ago, leaving it alone"
   elif [[ ${elapsed} -gt ${twoWeek} ]]; then
-    echo "\tStack ${stack} was created/last updated over two weeks ago"
+    echo -e "\t" "Stack ${stack} was created/last updated over two weeks ago"
     deleteStack "${stack}"
   fi
 }
