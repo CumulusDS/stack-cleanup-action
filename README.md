@@ -22,6 +22,31 @@ Default: "serverless.yml"
 Region to cleanup
 Required: true
 
+#### `role`
+Role suffix to assume
+Required property.
+
+#### `duration_seconds`
+Role assumption duration in seconds.
+default: `3600`
+
+#### `aws_access_key_id`
+AWS Access Key ID.  Pass in from a secret.
+Required property.
+
+#### `aws_secret_access_key`
+AWS Secret Acces Key.  Pass in from a secret.
+Required property.
+
+#### `role_skip_session_tagging`
+Whether to tag role session or not
+default: `true`
+
+#### `account_id`
+AWS account number.  Pass in from secrets.
+Required property.
+
+
 ### Outputs
 None
 
@@ -32,6 +57,11 @@ None
         uses: CumulusDS/stack-cleanup-action@v0.0.1
         with:
           region: ${{ matrix.region }}
+          role: "CI-User"
+          region: "${{ matrix.region }}"
+          account_id: ${{ secrets.ACCOUNT }}
+          aws_access_key_id: ${{ secrets.KEY_ID }}
+          aws_secret_access_key: ${{ secrets.ACCESS_KEY }}
 ```
 
 [release-badge]: https://github.com/CumulusDS/stack-cleanup-action/actions/workflows/release.yml/badge.svg

@@ -12,6 +12,30 @@ inputs:
   region:
     description: "Region"
     required: true
+  role:
+    description: "Role suffix to assume"
+    required: true
+  duration_seconds:
+    description: "Role Assumption Duration in seconds"
+    required: false
+    default: "3600"
+  aws_access_key_id:
+    description: "Access Key ID"
+    required: true
+  aws_secret_access_key:
+    description: "Secret Access Key"
+    required: true
+  role_skip_session_tagging:
+    description: "Whether to tag role session or not"
+    required: false
+    default: "true"
+  account_id:
+    description: "AWS Account #"
+    required: true
+  hyphen:
+    description: "Whether or not to hyphenate the role name"
+    required: false
+    default: "true"
 runs:
   using: "composite"
   steps:
@@ -22,6 +46,18 @@ runs:
       with:
         file: ${{ inputs.file }}
         service: service
+    - name: Assume Role
+      id: role
+      uses: CumulusDS/assume-role-action@v1
+      with:
+        role: ${{ inputs.role }}
+        hyphen: ${{ inputs.hyphen }}
+        region: ${{ inputs.region }}
+        account_id: ${{ inputs.account_id }}
+        duration_seconds: ${{ inputs.duration_seconds }}
+        aws_access_key_id: ${{ inputs.aws_access_key_id }}
+        aws_secret_access_key: ${{ inputs.aws_secret_access_key }}
+        role_skip_session_tagging: ${{ inputs.role_skip_session_tagging }}
     - name: Cleanup
       run: ${{ github.action_path }}/cleanup
       env:
