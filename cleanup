@@ -21,8 +21,8 @@ getFiltered() {
 deleteStack() {
   local stack=$1
   echo -e "\t" "Removing stack ${stack}"
-  #aws cloudformation delete-stack --region ${region} --stack-name ${stack} \
-  #  --output table --color auto
+  aws cloudformation delete-stack --region ${region} --stack-name ${stack} \
+    --output table --color auto
 }
 
 stackAge() {
